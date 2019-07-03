@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+    <head></head>
+    <body>
+        <canvas id="canvas" onclick="play()"></canvas>
+    </body>
+    <script>
+        const context = new AudioContext()
+        const source = context.createBufferSource()
+        const analyser = context.createAnalyser()
+        const audioData = new Uint8Array(analyser.frequencyBinCount)
+        const canvas = document.getElementById('canvas')
+        canvas.setAttribute('width', window.innerWidth)
+        canvas.setAttribute('height', window.innerHeight)
+        const c = canvas.getContext('2d')
+        c.lineWidth = 3
+        c.strokeStyle = "blue"
+        const play = () => {
+
+            fetch("/demo.mp3").then(stream => stream.arrayBuffer())
+            .then(freq => context.decodeAudioData(freq))
+            .then(audio => {
+                source.buffer = audio
+                source.connect(analyser)
+                analyser.connect(context.destination)
+                source.start()
+                draw()
+            })
+        }
+
+        const draw = () => {
+            requestAnimationFrame(draw)
+            analyser.getByteTimeDomainData(audioData)
+            const {width:w, height:h} = canvas
+            c.clearRect(0,0,w,h)
+            c.beginPath()
+            c.moveTo(0,h/2)
+            audioData.reduce((x, samp) => {
+                const y = (samp / 128.0) * (h/2)
+                c.lineTo(x,y)
+                return x + (w*2.0) / analyser.fftSize
+            }, 0)
+            c.stroke()
+        }
+    </script>
+</html>
